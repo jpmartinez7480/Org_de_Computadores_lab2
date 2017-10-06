@@ -16,8 +16,7 @@ Procesador::Procesador()
 		registros[i] =Registro(); 
 	for(int i = 0; i < 1000; i++)
 		stackPointer[i] = Registro();
-	for(int i = 0; i < 1000; i++)
-		lines_control_sign[i] = Control();
+	lineControl = Control();
 	cantoReloj = 1;
 }
 
@@ -113,8 +112,7 @@ void Procesador::showContent_Registros()
 int Procesador::buscarRegistro(string r)
 {
 	int cnt = 0;
-	while(regs[cnt] != r)
-		cnt++;
+	while(regs[cnt] != r)	cnt++;
 	return cnt;
 }
 
@@ -168,20 +166,8 @@ void Procesador::j(string label)
 			aux = instrucciones.end();
 		}
 	}
-	LC = i;
 	*PC = _i;
-	ejecutarInstruccion(_i);
-}
-
-void Procesador::compilar()
-{
-	LC = 0;
-	PC = instrucciones.begin();
-	while(PC != instrucciones.end()){
-		inst = *PC;
-		//ejecutarInstruccion(inst); //se ejecuta una instruccion en un ciclo
-		PC++; //se pasa a la siguiente instruccion
-	}
+	ejecutar(_i);
 }
 
 int Procesador::ALU(int v1, int v2, string op)
@@ -197,9 +183,8 @@ int Procesador::ALU(int v1, int v2, string op)
 }
 
 
-void Procesador::etapaIF(Instruccion i){
-	buffer_if_id.Buffer(i);
-	PC++;
+void Procesador::etapaIF(){
+	buffer_if_id.Buffer(inst);
 }
 
 void Procesador::etapaID()
@@ -215,36 +200,39 @@ void Procesador::etapaEX()
 	if(buffer_id_ex.getInstruction().getTipo() == 'R')
 		buffer_ex_mem.Buffer(res,buffer_id_ex.getRegistroRd())
 	else if(buffer_id_ex.getInstruction().getOperando() == "beq" && res == 0)	
-		Control.setBranch(1);
+		lineControl.setBranch(1);
 	else if(buffer_id_ex.getInstruction().getOperando() == "lw"){
 		buffer_ex_mem(res,buffer_id_ex.getValueRt())
-		Control.setMemRead(1);
+		lineControl.setMemRead(1);
 	}
 	else if(buffer_id_ex.getInstruction().getOperando() == "sw"){
 		buffer_ex_mem(res,buffer_id_ex.getValueRt())
-		Control.setMemWrite(1);	
+		lineControl.setMemWrite(1);	
 	}
+
 }
 
 void Procesador::etapaMEM()
 {
-	if(Control.getMemWrite() == 1){
+	if(lineControl.getMemWrite() == 1){
 		sw(buffer_ex_mem.getRegistroRt(),buffer_ex_mem.getDir())
-		Control.setMemToReg(0);
+		lineControl.setMemToReg(0);
 	}
-	else if(Control.getMemRead() == 1){
+	else if(lineControl.getMemRead() == 1){
 		int value = stackPointer[999-buffer_ex_mem.getDir()/4].getRegistro();
 		buffer_mem_wb.setRegistroRt(value);
-		Control.setMemToReg(1);
+		lineControl.setMemToReg(1);
 	}
-	else if(Control.getMemWrite() == 0 && Control.getMemRead() == 0){
+	else if(lineControl.getMemWrite() == 0 && lineControl.getMemRead() == 0){
 		buffer_mem_wb(buffer_ex_mem.getValueRd(),buffer_ex_mem.getRegistroRd());
 	}
 }
 
 void Procesador::etapaWB(){
-	registros[buscarRegistro(buffer_mem_wb.getRegistroRd())].setRegistro();
-	Control.setMemToReg(0);
+	if(lineControl.getMemToReg() == 1){
+		registros[buscarRegistro(buffer_mem_wb.getRegistroRd())].setRegistro();
+		lineControl.setMemToReg(0);	
+	}
 }
 
 void Procesador::ejecutar()
@@ -258,12 +246,12 @@ void Procesador::ejecutar()
 	}
 }
 
-void Procesador::datapath(Instruccion i)
+void Procesador::datapath()
 {
-	etapaIF(i);
-	etapaID(buffer_if_id);
-	etapaEX(buffer_id_ex);
-	etapaMEM(buffer_ex_mem);
-	etapaWB(buffer_mem_wb);
+	etapaIF();
+	etapaID();
+	etapaEX();
+	etapaMEM();
+	etapaWB();
 }
 

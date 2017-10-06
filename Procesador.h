@@ -23,23 +23,18 @@ class Procesador
 		int addi(int,int);
 		int subi(int,int);
 		void j(string);
-		void compilar();
-		//void ejecutar();
+		void ejecutar();
 		void datapath(Instruccion);
-		void ejecutarInstruccion(Instruccion);
 		static const string regs[32];
 		static const string operaciones[11];
 	private:
-		list<Instruccion>::iterator PC;
-		int LC;
 		int cantoReloj;
-		int controlSignal;
+		list<Instruccion>::iterator PC;
 		list<Instruccion> instrucciones; //lista con las instrucciones mips
 		Instruccion inst;
 		Registro registros[32];
 		Registro stackPointer[1000];
-		Control lines_control_sign[1000];
-		//list<Control> lines_control_sign;
+		Control lineControl;
 		Buffer buffer_if_id;
 		Buffer buffer_id_ex;
 		Buffer buffer_ex_mem;
