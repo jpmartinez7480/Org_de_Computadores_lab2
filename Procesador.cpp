@@ -18,6 +18,7 @@ Procesador::Procesador()
 		stackPointer[i] = Registro();
 	for(int i = 0; i < 1000; i++)
 		lines_control_sign[i] = Control();
+	cantoReloj = 1;
 }
 
 Procesador::~Procesador(){}
@@ -149,10 +150,6 @@ void Procesador::sw(string r, int pos){
 	stackPointer[999-pos/4].setRegistro(registros[buscarRegistro(r)].getRegistro());
 }
 
-bool Procesador::beq(int r1, int r2){
-	return r1 == r2;
-}
-
 void Procesador::j(string label)
 {
 	int i = 0;
@@ -182,82 +179,91 @@ void Procesador::compilar()
 	PC = instrucciones.begin();
 	while(PC != instrucciones.end()){
 		inst = *PC;
-		ejecutarInstruccion(inst);
-		PC++;
+		//ejecutarInstruccion(inst); //se ejecuta una instruccion en un ciclo
+		PC++; //se pasa a la siguiente instruccion
 	}
 }
 
-void Procesador::ejecutarInstruccion(Instruccion _i)
+int Procesador::ALU(int v1, int v2, string op)
 {
-	int r1;
-	int r2;
-	int r3;
-	switch(_i.getTipo())
-	{
-		case 'R':
-			r1 = buscarRegistro(_i.getRegistro1()); 
-			r2 =  registros[buscarRegistro(_i.getRegistro2())].getRegistro();
-			r3 = registros[buscarRegistro(_i.getRegistro3())].getRegistro();
-			if(_i.getOperando() == "add")
-				registros[r1].setRegistro(add(r2,r3));
-			else if(_i.getOperando() == "sub")
-				registros[r1].setRegistro(sub(r2,r3));
-			else if(_i.getOperando() == "mul")
-				registros[r1].setRegistro(mul(r2,r3));
-			else if(_i.getOperando() == "div")
-				registros[r1].setRegistro(div(r2,r3));
-			lines_control_sign[controlSignal].controlSign(_i.getTipo(),_i.getOperando());
-			controlSignal++;
-			LC++;		
-			break;
+	int res;
+	if(op == "add" || op == "lw" || op == "sw")	res = add(v1,v2);
+	else if(op == "sub" || op == "beq")	res = sub(v1,v2);
+	else if(op == "mul") res = mul(v1,v2);
+	else if(op == "div") res = div(v1,v2);
+	else if(op == "addi") res = addi(v1,v2);
+	else if(op == "subi") res = subi(v1,v2);
+	return res;
+}
 
-		case 'I':
-			if(_i.getOperando() == "addi"){
-				r1 = buscarRegistro(_i.getRegistro1());
-				r2 = registros[buscarRegistro(_i.getRegistro2())].getRegistro();
-				r3 = atoi(_i.getRegistro3().c_str()); //pasar a int
-				registros[r1].setRegistro(addi(r2,r3));
-				lines_control_sign[controlSignal].controlSign(_i.getTipo(),_i.getOperando());
-				controlSignal++;
-				LC++;
-			}
-			else if(_i.getOperando() == "subi"){
-				r1 = buscarRegistro(_i.getRegistro1());
-				r2 = registros[buscarRegistro(_i.getRegistro2())].getRegistro();
-				r3 = atoi(_i.getRegistro3().c_str()); //pasar a int
-				registros[r1].setRegistro(subi(r2,r3));
-				lines_control_sign[controlSignal].controlSign(_i.getTipo(),_i.getOperando());
-				controlSignal++;
-				LC++;
-			}
-			else if(_i.getOperando() == "lw"){
-				lw(_i.getRegistro1(),atoi(_i.getRegistro2().c_str()));
-				lines_control_sign[controlSignal].controlSign(_i.getTipo(),_i.getOperando());
-				controlSignal++;
-				LC++;
-			}
-			else if(_i.getOperando() == "sw"){
-				sw(_i.getRegistro1(),atoi(_i.getRegistro2().c_str()));
-				lines_control_sign[controlSignal].controlSign(_i.getTipo(),_i.getOperando());
-				controlSignal++;
-				LC++;
-			}
-			else if(_i.getOperando() == "beq"){
-				lines_control_sign[controlSignal].controlSign(_i.getTipo(),_i.getOperando());
-				controlSignal++;
-				LC++;
-				if(beq(registros[buscarRegistro(_i.getRegistro1())].getRegistro(),registros[buscarRegistro(_i.getRegistro2())].getRegistro())){
-					j(_i.getRegistro3()+":");
-				}
-			}	
-			break;
 
-			case 'J':
-			j(_i.getRegistro3());
-			lines_control_sign[controlSignal].controlSign(_i.getTipo(),_i.getOperando());
-			controlSignal++;
-			break;
+void Procesador::etapaIF(Instruccion i){
+	buffer_if_id.Buffer(i);
+	PC++;
+}
 
+void Procesador::etapaID()
+{
+	int rs = buscarRegistro(buffer_if_id.getRegistroRs());
+	int rt = buscarRegistro(buffer_if_id.getRegistroRt());
+	buffer_id_ex.Buffer(registros[rs],registros[rt],registros[rd],buffer_if_id.getInstruction());
+}
+
+void Procesador::etapaEX()
+{
+	int res = ALU(buffer_id_ex.getValueRs(),buffer_id_ex.getValueRt());
+	if(buffer_id_ex.getInstruction().getTipo() == 'R')
+		buffer_ex_mem.Buffer(res,buffer_id_ex.getRegistroRd())
+	else if(buffer_id_ex.getInstruction().getOperando() == "beq" && res == 0)	
+		Control.setBranch(1);
+	else if(buffer_id_ex.getInstruction().getOperando() == "lw"){
+		buffer_ex_mem(res,buffer_id_ex.getValueRt())
+		Control.setMemRead(1);
 	}
+	else if(buffer_id_ex.getInstruction().getOperando() == "sw"){
+		buffer_ex_mem(res,buffer_id_ex.getValueRt())
+		Control.setMemWrite(1);	
+	}
+}
+
+void Procesador::etapaMEM()
+{
+	if(Control.getMemWrite() == 1){
+		sw(buffer_ex_mem.getRegistroRt(),buffer_ex_mem.getDir())
+		Control.setMemToReg(0);
+	}
+	else if(Control.getMemRead() == 1){
+		int value = stackPointer[999-buffer_ex_mem.getDir()/4].getRegistro();
+		buffer_mem_wb.setRegistroRt(value);
+		Control.setMemToReg(1);
+	}
+	else if(Control.getMemWrite() == 0 && Control.getMemRead() == 0){
+		buffer_mem_wb(buffer_ex_mem.getValueRd(),buffer_ex_mem.getRegistroRd());
+	}
+}
+
+void Procesador::etapaWB(){
+	registros[buscarRegistro(buffer_mem_wb.getRegistroRd())].setRegistro();
+	Control.setMemToReg(0);
+}
+
+void Procesador::ejecutar()
+{
+	PC = instrucciones.begin();
+	while(PC != instrucciones.end()){
+		inst = *PC;
+		//ejecutarInstruccion(inst); se ejecuta una instruccion en un ciclo
+		//PC++; //se pasa a la siguiente instruccion
+		datapath(inst);
+	}
+}
+
+void Procesador::datapath(Instruccion i)
+{
+	etapaIF(i);
+	etapaID(buffer_if_id);
+	etapaEX(buffer_id_ex);
+	etapaMEM(buffer_ex_mem);
+	etapaWB(buffer_mem_wb);
 }
 
