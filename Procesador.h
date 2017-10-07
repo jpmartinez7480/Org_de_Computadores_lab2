@@ -1,6 +1,5 @@
-#include "Instruccion.cpp"
 #include "Control.cpp"
-#include "Registro.cpp"
+#include "Buffer.cpp"
 
 #include <list> //definicion de la clase list
 #include <algorithm>
@@ -16,6 +15,7 @@ class Procesador
 		int readFile_Registers(string);
 		void showContent_Registros();
 		int buscarRegistro(string r); //devuelve la pos del registro
+		int ALU(int,int,string);
 		int add(int,int);
 		int sub(int,int);
 		int mul(int,int);
@@ -23,12 +23,16 @@ class Procesador
 		int addi(int,int);
 		int subi(int,int);
 		void j(string);
+		void sw(string,int);
 		void ejecutar();
-		void datapath(Instruccion);
+		void etapaIF();
+		void etapaID();
+		void etapaEX();
+		void etapaMEM();
+		void etapaWB();
 		static const string regs[32];
 		static const string operaciones[11];
 	private:
-		int cantoReloj;
 		list<Instruccion>::iterator PC;
 		list<Instruccion> instrucciones; //lista con las instrucciones mips
 		Instruccion inst;

@@ -70,11 +70,11 @@ int main()
 				}
 				cout << "Presione cualquier tecla para continuar...";
 				cin >> pause;
-
+				break;
 			case 3:
 				system("cls");
 				if(file_mips != "" && file_regs != ""){
-						procesador.compilar();
+						procesador.ejecutar();
 						procesador.showContent_Registros();	
 					}
 				else if(file_mips == "" && file_regs != "")
