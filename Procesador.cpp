@@ -27,10 +27,7 @@ int Procesador::readFile_Mips(string nfile)
 	fstream FILE;
 	char *linea;
 	FILE.open(nfile.c_str(),ios::in);
-	if(!FILE){
-		cout << "No se pudo abrir el archivo. Comprueba el nombre del archivo o la existencia de este." << endl;
-		return 0;
-	}
+	if(!FILE)	return 0;
 	else
 	{
 		string line;
@@ -78,17 +75,11 @@ int Procesador::readFile_Registers(string nfile)
 	string reg;
 	int value;
 	FILE.open(nfile.c_str(),ios::in);
-	if(!FILE){
-		cout << "No se pudo abrir el archivo. Compruebe el nombre o la existencia de este archivo." << endl;
-		return 0;
-	}
-	else
-	{
+	if(!FILE)	return 0;
+	else{
 		string linea;
 		getline(FILE,linea);
-		while(FILE >> reg >> value){
-			registros[buscarRegistro(reg)].setRegistro(value);
-		}
+		while(FILE >> reg >> value)	registros[buscarRegistro(reg)].setRegistro(value);
 		FILE.close();
 		return 1;
 	}
@@ -180,78 +171,97 @@ int Procesador::ALU(int v1, int v2, string op)
 
 void Procesador::etapaIF(){
 	buffer_if_id.setBuffer_if_id(inst);
+	buffer_id_ex.getBufferControl() = Control(); 
 }
 
 void Procesador::etapaID()
 {
 	if(buffer_if_id.getInstruction() != "sw" && buffer_if_id.getInstruction()!= "lw" && buffer_if_id.getInstruction() != "beq" && buffer_if_id.getInstruction()!= "j" && buffer_if_id.getInstruction()!= "addi" && buffer_if_id.getInstruction()!= "subi"){
-		buffer_id_ex.setBuffer_id_ex(registros[buscarRegistro(buffer_if_id.getRegistroRs())].getRegistro(),registros[buscarRegistro(buffer_if_id.getRegistroRt())].getRegistro(),buffer_if_id.getRegistroRd(),buffer_if_id.getInstruction()); //int,int,string,string
-		lineControl.setRegDst(1);
+		buffer_id_ex.setBuffer_id_ex(registros[buscarRegistro(buffer_if_id.getRegistroRs())].getRegistro(),registros[buscarRegistro(buffer_if_id.getRegistroRt())].getRegistro(),buffer_if_id.getRegistroRd(),buffer_if_id.getInstruction(),buffer_if_id.getRegistroRs(),buffer_if_id.getRegistroRt()); //int,int,string,string,string,string
+		buffer_id_ex.getBufferControl().setRegDst(1);
 	}
 	else if(buffer_if_id.getInstruction() == "sw" || buffer_if_id.getInstruction()== "lw"){
-		cout << buffer_if_id.getRegistroRt() << endl;
 		char rt = buffer_if_id.getRegistroRt()[0];
 		int offset = rt;  
 		buffer_id_ex.setBuffer_id_ex(buffer_if_id.getRegistroRs(),offset,buffer_if_id.getInstruction()); //string, int, string
+		buffer_id_ex.getBufferControl().setALUSrc(1); //el segundo operando de la alu viende del signo extendido
 	}
 	else if(buffer_if_id.getInstruction() == "beq"){
 		buffer_id_ex.setBuffer_id_ex(registros[buscarRegistro(buffer_if_id.getRegistroRs())].getRegistro(),registros[buscarRegistro(buffer_if_id.getRegistroRt())].getRegistro(),buffer_if_id.getRegistroRt()); //int, int, string
 	}
 	else if(buffer_if_id.getInstruction() == "addi" || buffer_if_id.getInstruction() == "subi"){
-		buffer_id_ex.setBuffer_id_ex(registros[buscarRegistro(buffer_if_id.getRegistroRs())].getRegistro(), buffer_if_id.getRegistroRt(),buffer_if_id.getRegistroRd(),buffer_if_id.getInstruction());		
+		buffer_id_ex.setBuffer_id_ex(registros[buscarRegistro(buffer_if_id.getRegistroRs())].getRegistro(), buffer_if_id.getRegistroRt(),buffer_if_id.getRegistroRd(),buffer_if_id.getRegistroRs(),buffer_if_id.getInstruction());		
+		buffer_id_ex.getBufferControl().setALUSrc(1);	
 	}
+	buffer_ex_mem.getBufferControl() = Control();
 }
 
 void Procesador::etapaEX()
 {
-	if(buffer_id_ex.getInstruction() != "sw"  && buffer_id_ex.getInstruction() != "beq"){
+	if(buffer_id_ex.getInstruction() != "sw"  && buffer_id_ex.getInstruction() != "beq" && buffer_id_ex.getInstruction() != "lw"){
 		buffer_ex_mem.setBuffer_ex_mem(ALU(buffer_id_ex.getValueRs(),buffer_id_ex.getValueRt(),buffer_id_ex.getInstruction()),buffer_id_ex.getRegistroRd(),buffer_id_ex.getInstruction()); //string string int
-		lineControl.setRegDst(1);
+		buffer_id_ex.getBufferControl().setRegWrite(1);
 	}
-	else if(buffer_id_ex.getInstruction() == "beq" && ALU(buffer_id_ex.getValueRs(),buffer_id_ex.getValueRt(),"sub") == 0)	
-		lineControl.setBranch(1);
+	else if(buffer_id_ex.getInstruction() == "beq" && ALU(buffer_id_ex.getValueRs(),buffer_id_ex.getValueRt(),"sub") == 0){
+		buffer_ex_mem.getBufferControl().setBranch(1);
+	}	
 	else if(buffer_id_ex.getInstruction() == "lw"){
 		buffer_ex_mem.setBuffer_ex_mem(ALU(buffer_id_ex.getValueRs(),buffer_id_ex.getValueRt(),buffer_id_ex.getInstruction()),buffer_id_ex.getRegistroRd(),buffer_id_ex.getInstruction()); //string string int
-		lineControl.setMemRead(1);
+		buffer_ex_mem.getBufferControl().setMemRead(1);
 	}
 	else if(buffer_id_ex.getInstruction() == "sw"){
 		buffer_ex_mem.setBuffer_ex_mem(ALU(buffer_id_ex.getValueRs(),buffer_id_ex.getValueRt(),buffer_id_ex.getInstruction()),buffer_id_ex.getRegistroRd(),buffer_id_ex.getInstruction()); //string string int
-		lineControl.setMemWrite(1);	
+		buffer_ex_mem.getBufferControl().setMemWrite(1);
 	}
+	buffer_mem_wb.getBufferControl() = Control();
 }
 
 void Procesador::etapaMEM()
 {
-	if(lineControl.getMemWrite() == 1){
+	if(buffer_ex_mem.getBufferControl().getMemWrite() == 1)
 		sw(buffer_ex_mem.getRegistroRs(),buffer_ex_mem.getALU_result());
-		lineControl.setMemToReg(0);
-	}
-	else if(lineControl.getMemRead() == 1){
+	else if(buffer_ex_mem.getBufferControl().getMemRead() == 1){
 		int value = stackPointer[999-buffer_ex_mem.getALU_result()/4].getRegistro();
 		buffer_mem_wb.setBuffer_mem_wb(buffer_ex_mem.getRegistroRs(),"lw",value); //string string int
-		lineControl.setMemToReg(1);
+		buffer_mem_wb.getBufferControl().setMemToReg(1);
 	}
-	else if(lineControl.getMemWrite() == 0 && lineControl.getMemRead() == 0){
-		buffer_mem_wb.setBuffer_mem_wb(buffer_ex_mem.getRegistroRs(),"",buffer_ex_mem.getALU_result());//int,string
+	else if(buffer_ex_mem.getBufferControl().getMemWrite() == 0 && buffer_ex_mem.getBufferControl().getMemRead() == 0){
+		buffer_mem_wb.setBuffer_mem_wb(buffer_ex_mem.getRegistroRd(),"",buffer_ex_mem.getALU_result());//int,string
+		buffer_mem_wb.getBufferControl().setRegWrite(1);
 	}
 }
 
 void Procesador::etapaWB(){
-	if(lineControl.getMemToReg() == 1){
+	if(buffer_mem_wb.getBufferControl().getMemToReg() == 1)
 		registros[buscarRegistro(buffer_ex_mem.getRegistroRs())].setRegistro(buffer_ex_mem.getALU_result());		
-		lineControl.setMemToReg(0);
-	}
-	else if(lineControl.getRegDst() == 1){
-		registros[buscarRegistro(buffer_mem_wb.getRegistroRd())].setRegistro(buffer_ex_mem.getALU_result());
-		lineControl.setRegDst(0);	
+	else if(buffer_mem_wb.getBufferControl().getRegDst() == 1)
+		registros[buscarRegistro(buffer_mem_wb.getRegistroRd())].setRegistro(buffer_ex_mem.getALU_result());	
+}
+
+int Procesador::Hazard_DataDetector(int op)  //recuerda modificar para forwarding
+{
+	switch(op)
+	{
+		case 1: //hazard ex
+			if(buffer_ex_mem.getBufferControl().getRegWrite() == 1 &&
+				buffer_ex_mem.getBufferControl().getRegDst() != 0 && 
+				buffer_ex_mem.getRegistroRd() == buffer_id_ex.getRegistroRs())
+					return 1;
+			else if(buffer_ex_mem.getBufferControl().getRegWrite() == 1 &&
+				buffer_ex_mem.getBufferControl().getRegDst() != 0 && 
+				buffer_ex_mem.getRegistroRd() == buffer_id_ex.getRegistroRt())
+					return 2;
+		case 2: //hazard mem
+			if(buffer_mem_wb.getBufferControl().getRegWrite() == 1 &&
+				buffer_mem_wb.getRegistroRd())
 	}
 }
 
 void Procesador::ejecutar()
 {
 	PC = instrucciones.begin();
-	inst = *PC;
 	while(PC != instrucciones.end()){
+		inst = *PC;
 		if(buffer_mem_wb.getStatus())
 			etapaWB();
 		if(buffer_ex_mem.getStatus())

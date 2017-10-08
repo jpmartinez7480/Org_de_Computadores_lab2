@@ -13,20 +13,23 @@ void Buffer::setBuffer_if_id(Instruccion i)
 	setStatus(true);
 }
 
-void Buffer::setBuffer_id_ex(int rs, int rt, string rd, string i) // buffer_id_ex para R 
+void Buffer::setBuffer_id_ex(int rs, int rt, string rd, string i,string rs, string rt) // buffer_id_ex para R 
 {
 	setValueRs(rs); //valor
 	setValueRt(rt); //valor
 	setRegistroRd(rd); //reg de rd
 	setInstruction(i);
+	setRegistroRs(rs);
+	setRegistroRt(rt);
 }
 
-void Buffer::setBuffer_id_ex(int rs,string rt, string S_ext,string i) //buffer_id_ex para (addi,subi)
+void Buffer::setBuffer_id_ex(int rs,string rt, string S_ext,string rs,string i) //buffer_id_ex para (addi,subi)
 {
 	setValueRs(rs); //valor
 	setRegistroRt(rt);
 	setValueRt(atoi(S_ext.c_str()));
 	setInstruction(i);
+	setRegistroRs(rs);
 }
 
 void Buffer::setBuffer_id_ex(string rs, int offset, string i) //buffer_id_ex para lw,sw
@@ -79,10 +82,6 @@ void Buffer::setALU_result(int v){
 	 valueALU_result= v;
 }
 
-/*void Buffer::setPC(list<Instruccion>::iterator pc){
-	PC = pc;
-}*/
-
 void Buffer::setInstruction(string inst){
 	instruction = inst;
 }
@@ -119,10 +118,6 @@ string Buffer::getInstruction(){
 	return instruction;
 }
 
-/*Instruccion Buffer::getPC(){
-	return PC;
-}*/
-
 string Buffer::getRegistroRd(){
 	return rd;
 }
@@ -139,4 +134,6 @@ bool Buffer::getStatus(){
 	return status;
 }
 
-
+Control Buffer::getBufferControl(){
+	return bufferControl;
+}

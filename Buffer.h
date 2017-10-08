@@ -10,8 +10,8 @@ class Buffer
 	public:
 		Buffer();
 		void setBuffer_if_id(Instruccion);
-		void setBuffer_id_ex(int, int, string, string);
-		void setBuffer_id_ex(int,string,string,string);
+		void setBuffer_id_ex(int, int, string, string, string, string);
+		void setBuffer_id_ex(int,string,string,string,string);
 		void setBuffer_id_ex(string,int,string);
 		void setBuffer_id_ex(int,int,string);
 		void setBuffer_ex_mem(int,string,string);
@@ -20,7 +20,6 @@ class Buffer
 		void setValueRs(int);
 		void setValueRt(int);
 		void setALU_result(int);
-		//void setPC(list<Instruccion>::iterator);
 		void setRegistroRd(string);
 		void setRegistroRt(string);
 		void setRegistroRs(string);
@@ -32,17 +31,17 @@ class Buffer
 		string getRegistroRs();
 		string getRegistroRt();
 		string getInstruction();
-		//Instruccion getPC();
 		bool getStatus();
+		Control getBufferControl();
 
 	private:
 		int valueRs;
 		int valueRt;
 		int valueALU_result;
 		bool status;
-		//list<Instruccion>::iterator PC;
 		string rd;
 		string rt;
 		string rs;
 		string instruction;
+		Control bufferControl;
 };

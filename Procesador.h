@@ -30,6 +30,8 @@ class Procesador
 		void etapaEX();
 		void etapaMEM();
 		void etapaWB();
+		bool Hazard_DataDetector();
+		//bool Hazard_ControlDetector();
 		static const string regs[32];
 		static const string operaciones[11];
 	private:
