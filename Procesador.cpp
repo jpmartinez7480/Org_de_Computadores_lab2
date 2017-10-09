@@ -172,6 +172,7 @@ int Procesador::ALU(int v1, int v2, string op)
 void Procesador::etapaIF(){
 	buffer_if_id.setBuffer_if_id(inst);
 	buffer_id_ex.getBufferControl() = Control(); 
+	cout << "IF: "<<buffer_if_id.getInstruction() << endl;
 }
 
 void Procesador::etapaID()
@@ -194,10 +195,12 @@ void Procesador::etapaID()
 		buffer_id_ex.getBufferControl().setALUSrc(1);	
 	}
 	buffer_ex_mem.getBufferControl() = Control();
+	cout << "ID: " << buffer_id_ex.getInstruction() << endl;
 }
 
 void Procesador::etapaEX()
 {
+	Hazard_DataDetector();
 	if(buffer_id_ex.getInstruction() != "sw"  && buffer_id_ex.getInstruction() != "beq" && buffer_id_ex.getInstruction() != "lw"){
 		buffer_ex_mem.setBuffer_ex_mem(ALU(buffer_id_ex.getValueRs(),buffer_id_ex.getValueRt(),buffer_id_ex.getInstruction()),buffer_id_ex.getRegistroRd(),buffer_id_ex.getInstruction()); //string string int
 		buffer_id_ex.getBufferControl().setRegWrite(1);
@@ -214,6 +217,7 @@ void Procesador::etapaEX()
 		buffer_ex_mem.getBufferControl().setMemWrite(1);
 	}
 	buffer_mem_wb.getBufferControl() = Control();
+	cout << "EX: " << buffer_id_ex.getInstruction() << endl;
 }
 
 void Procesador::etapaMEM()
@@ -229,38 +233,69 @@ void Procesador::etapaMEM()
 		buffer_mem_wb.setBuffer_mem_wb(buffer_ex_mem.getRegistroRd(),"",buffer_ex_mem.getALU_result());//int,string
 		buffer_mem_wb.getBufferControl().setRegWrite(1);
 	}
+	cout << "MEM: " << buffer_id_ex.getInstruction() << endl;
 }
 
 void Procesador::etapaWB(){
-	if(buffer_mem_wb.getBufferControl().getMemToReg() == 1)
+	if(buffer_mem_wb.getBufferControl().getMemToReg() == 1){
 		registros[buscarRegistro(buffer_ex_mem.getRegistroRs())].setRegistro(buffer_ex_mem.getALU_result());		
-	else if(buffer_mem_wb.getBufferControl().getRegDst() == 1)
+		buffer_mem_wb.getBufferControl().setMemToReg(0);
+	}
+	else if(buffer_mem_wb.getBufferControl().getRegDst() == 1){
 		registros[buscarRegistro(buffer_mem_wb.getRegistroRd())].setRegistro(buffer_ex_mem.getALU_result());	
+		buffer_mem_wb.getBufferControl().setRegDst(0);
+	}
+	cout << "WB: " << buffer_id_ex.getInstruction() << endl;
 }
 
-int Procesador::Hazard_DataDetector(int op)  //recuerda modificar para forwarding
+int Procesador::Hazard_DataDetector()  //recuerda modificar para forwarding
 {
-	switch(op)
-	{
-		case 1: //hazard ex
-			if(buffer_ex_mem.getBufferControl().getRegWrite() == 1 &&
-				buffer_ex_mem.getBufferControl().getRegDst() != 0 && 
-				buffer_ex_mem.getRegistroRd() == buffer_id_ex.getRegistroRs())
-					return 1;
-			else if(buffer_ex_mem.getBufferControl().getRegWrite() == 1 &&
-				buffer_ex_mem.getBufferControl().getRegDst() != 0 && 
-				buffer_ex_mem.getRegistroRd() == buffer_id_ex.getRegistroRt())
-					return 2;
-		case 2: //hazard mem
-			if(buffer_mem_wb.getBufferControl().getRegWrite() == 1 &&
-				buffer_mem_wb.getRegistroRd())
+	//cout << "Hola estoy en hazard" << endl;
+	if(buffer_ex_mem.getBufferControl().getRegWrite() == 1 &&
+		buffer_ex_mem.getBufferControl().getRegDst() != 0 && 
+		buffer_ex_mem.getRegistroRd() == buffer_id_ex.getRegistroRs()){
+		cout << "Hazard: " << buffer_ex_mem.getRegistroRd() << endl;
+		return 1;
 	}
+				
+	else if(buffer_ex_mem.getBufferControl().getRegWrite() == 1 &&
+			buffer_ex_mem.getBufferControl().getRegDst() != 0 && 
+			buffer_ex_mem.getRegistroRd() == buffer_id_ex.getRegistroRt()){
+				cout << "Hazard: " << buffer_ex_mem.getRegistroRd() << endl;
+				return 2;
+			}
+
+	else if(buffer_mem_wb.getBufferControl().getRegWrite() == 1 &&
+	   	buffer_mem_wb.getBufferControl().getRegDst() != 0 &&
+	   	buffer_mem_wb.getRegistroRd() == buffer_ex_mem.getRegistroRs()){
+			cout << "Hazard: " << buffer_ex_mem.getRegistroRd() << endl;
+			return 3;
+		}
+				
+	else if(buffer_mem_wb.getBufferControl().getRegWrite() == 1 &&
+		buffer_mem_wb.getBufferControl().getRegDst() != 0 &&
+		buffer_mem_wb.getRegistroRd() == buffer_id_ex.getRegistroRt()){
+		cout << "Hazard: " << buffer_ex_mem.getRegistroRd() << endl;
+		return 4;
+	}
+				
+	else if(buffer_id_ex.getBufferControl().getMemRead() == 1 &&
+		(buffer_id_ex.getRegistroRt() == buffer_if_id.getRegistroRs() || 
+			buffer_id_ex.getRegistroRt() == buffer_if_id.getRegistroRt())){
+		//poner en espera
+		cout << "Hazard: " << buffer_ex_mem.getRegistroRd() << endl;
+		return 5;}
 }
+
+/*void Procesador::NOP()
+{
+	
+}*/
 
 void Procesador::ejecutar()
 {
 	PC = instrucciones.begin();
-	while(PC != instrucciones.end()){
+	while(PC != instrucciones.end() && (buffer_mem_wb.getBufferControl().getMemToReg() == 0 || buffer_mem_wb.getBufferControl().getRegDst() == 0)){
 		inst = *PC;
 		if(buffer_mem_wb.getStatus())
 			etapaWB();
@@ -271,7 +306,7 @@ void Procesador::ejecutar()
 		if(buffer_if_id.getStatus())
 			etapaID();
 		etapaIF();
-		PC++;
+		if(PC != instrucciones.end())
+			PC++;
 	}
-
 }

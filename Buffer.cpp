@@ -13,23 +13,25 @@ void Buffer::setBuffer_if_id(Instruccion i)
 	setStatus(true);
 }
 
-void Buffer::setBuffer_id_ex(int rs, int rt, string rd, string i,string rs, string rt) // buffer_id_ex para R 
+void Buffer::setBuffer_id_ex(int rs, int rt, string rd, string i,string _rs, string _rt) // buffer_id_ex para R 
 {
 	setValueRs(rs); //valor
 	setValueRt(rt); //valor
 	setRegistroRd(rd); //reg de rd
 	setInstruction(i);
-	setRegistroRs(rs);
-	setRegistroRt(rt);
+	setRegistroRs(_rs);
+	setRegistroRt(_rt);
+	setStatus(true);
 }
 
-void Buffer::setBuffer_id_ex(int rs,string rt, string S_ext,string rs,string i) //buffer_id_ex para (addi,subi)
+void Buffer::setBuffer_id_ex(int rs,string rt, string S_ext,string _rs,string i) //buffer_id_ex para (addi,subi)
 {
 	setValueRs(rs); //valor
 	setRegistroRt(rt);
 	setValueRt(atoi(S_ext.c_str()));
 	setInstruction(i);
-	setRegistroRs(rs);
+	setRegistroRs(_rs);
+	setStatus(true);
 }
 
 void Buffer::setBuffer_id_ex(string rs, int offset, string i) //buffer_id_ex para lw,sw
@@ -37,6 +39,7 @@ void Buffer::setBuffer_id_ex(string rs, int offset, string i) //buffer_id_ex par
 	setRegistroRs(rs); 
 	setValueRt(offset);
 	setInstruction(i);
+	setStatus(true);
 }
 
 void Buffer::setBuffer_id_ex(int rs, int rt, string label) //buffer_id_ex para beq
@@ -44,6 +47,7 @@ void Buffer::setBuffer_id_ex(int rs, int rt, string label) //buffer_id_ex para b
 	setValueRs(rs);
 	setValueRt(rt);
 	setInstruction(label);
+	setStatus(true);
 }
 
 void Buffer::setBuffer_ex_mem(int alr, string dest, string op) //buffer_ex_mem para R,addi,subi,lw,sw
@@ -56,6 +60,7 @@ void Buffer::setBuffer_ex_mem(int alr, string dest, string op) //buffer_ex_mem p
 		setALU_result(alr);
 		setRegistroRt(dest);
 	}
+	setStatus(true);
 }
 
 void Buffer::setBuffer_mem_wb(string rd, string op, int alr) //tipo R,addi,subi
@@ -68,6 +73,7 @@ void Buffer::setBuffer_mem_wb(string rd, string op, int alr) //tipo R,addi,subi
 		setALU_result(alr);
 		setRegistroRt(rd);
 	}
+	setStatus(true);
 }
 
 void Buffer::setValueRs(int v){
